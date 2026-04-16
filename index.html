@@ -145,6 +145,15 @@
     .start-btn:hover { transform: scale(1.05); }
     .start-btn:active { transform: scale(0.97); }
 
+    @media (max-width: 480px) {
+      .start-btn {
+        font-size: 14px;
+        padding: 18px 36px;
+        min-height: 60px;
+        min-width: 200px;
+      }
+    }
+
     #confetti-canvas {
       position: absolute;
       inset: 0;
@@ -265,6 +274,7 @@ const player = {
   invincible: 0,
 
   reset() {
+    if (canvas.width <= 0 || canvas.height <= 0) return;
     this.x = canvas.width / 2 - this.w / 2;
     this.y = canvas.height - this.h - 10;
     this.dx = 0;
@@ -498,22 +508,18 @@ const keys = { left: false, right: false };
 window.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
   if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
-  if (e.key === ' ' || e.key === 'Enter') handleStart();
+  if (e.key === ' ' || e.key === 'Enter') startGame();
 });
 window.addEventListener('keyup', e => {
   if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
   if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
 });
 
-function handleStart() {
-  if (gameState !== 'start') return;
-  startGame();
-}
-
-startBtn.addEventListener('click', startGame);
+startBtn.addEventListener('click', e => { e.preventDefault(); startGame(); });
 startBtn.addEventListener('touchend', e => { e.preventDefault(); startGame(); });
 
 function startGame() {
+  if (gameState !== 'start') return;
   gameState = 'playing';
   score = 0;
   timer = 0;
