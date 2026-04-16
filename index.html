@@ -60,46 +60,31 @@
       image-rendering: crisp-edges;
     }
 
-    #touch-controls {
+    #touch-zones {
       position: absolute;
-      bottom: 0; left: 0; right: 0;
-      height: 110px;
+      inset: 0;
       display: flex;
-      justify-content: space-between;
-      padding: 10px 20px 20px;
-      z-index: 10;
-      transition: opacity 0.4s ease, transform 0.4s ease;
+      z-index: 9;
+      transition: opacity 0.4s ease;
     }
 
-    #touch-controls.hidden {
+    #touch-zones.hidden {
       opacity: 0;
       pointer-events: none;
-      transform: translateY(20px);
     }
 
-    .touch-btn {
-      width: 140px;
-      height: 80px;
-      background: linear-gradient(180deg, #2a1a4a 0%, #1a0a2a 100%);
-      border: 3px solid #8b5cf6;
-      border-radius: 12px;
-      color: #c084fc;
-      font-family: 'Press Start 2P', monospace;
-      font-size: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 0 15px rgba(139, 92, 246, 0.4), inset 0 -4px 0 rgba(0,0,0,0.3);
-      cursor: pointer;
-      transition: transform 0.05s, box-shadow 0.05s;
-      touch-action: manipulation;
+    .touch-zone {
+      flex: 1;
+      touch-action: none;
       -webkit-tap-highlight-color: transparent;
     }
 
-    .touch-btn:active, .touch-btn.pressed {
-      transform: translateY(3px);
-      box-shadow: 0 0 8px rgba(139, 92, 246, 0.3), inset 0 -2px 0 rgba(0,0,0,0.3);
-      background: linear-gradient(180deg, #3a2a5a 0%, #2a1a3a 100%);
+    .touch-zone.left.active {
+      background: linear-gradient(90deg, rgba(139,92,246,0.16), rgba(139,92,246,0));
+    }
+
+    .touch-zone.right.active {
+      background: linear-gradient(270deg, rgba(0,255,204,0.14), rgba(0,255,204,0));
     }
 
     #end-screen {
@@ -229,11 +214,9 @@
 
     @media (min-width: 600px) {
       #canvas-wrapper { padding-bottom: 20px; }
-      .touch-btn { width: 120px; height: 70px; font-size: 18px; }
     }
 
     @media (max-height: 500px) {
-      #touch-controls { height: 90px; }
       canvas { max-height: 300px; }
     }
   </style>
@@ -251,9 +234,9 @@
     <canvas id="game"></canvas>
   </div>
 
-  <div id="touch-controls">
-    <button class="touch-btn" id="btn-left">&#9664;</button>
-    <button class="touch-btn" id="btn-right">&#9654;</button>
+  <div id="touch-zones" aria-hidden="true">
+    <div class="touch-zone left" id="zone-left"></div>
+    <div class="touch-zone right" id="zone-right"></div>
   </div>
 
   <div id="overlay">
@@ -295,9 +278,9 @@ const startBtn = document.getElementById('start-btn');
 const scoreEl = document.getElementById('score');
 const timerEl = document.getElementById('timer');
 const highScoreEl = document.getElementById('high-score');
-const btnLeft = document.getElementById('btn-left');
-const btnRight = document.getElementById('btn-right');
-const touchControls = document.getElementById('touch-controls');
+const zoneLeft = document.getElementById('zone-left');
+const zoneRight = document.getElementById('zone-right');
+const touchZones = document.getElementById('touch-zones');
 const endScreen = document.getElementById('end-screen');
 const endTitle = document.getElementById('end-title');
 const endSub = document.getElementById('end-sub');
@@ -572,7 +555,7 @@ function startGame() {
   overlay.classList.add('hidden');
   endScreen.classList.remove('visible');
   startBtn.classList.add('hidden');
-  touchControls.classList.remove('hidden');
+  touchZones.classList.remove('hidden');
   lastTime = performance.now();
   if (animId) cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
@@ -583,20 +566,27 @@ startBtn.addEventListener('click', e => { e.preventDefault(); startGame(); });
 startBtn.addEventListener('touchend', e => { e.preventDefault(); startGame(); });
 overlay.addEventListener('click', e => { if (e.target === overlay) startGame(); });
 
-// Touch controls — only react to touch on the buttons themselves
-function addTouchEvents(btn, dir) {
-  const start = e => { e.stopPropagation(); keys[dir] = true; btn.classList.add('pressed'); };
-  const end = e => { e.stopPropagation(); keys[dir] = false; btn.classList.remove('pressed'); };
-  btn.addEventListener('touchstart', start, { passive: true });
-  btn.addEventListener('touchend', end, { passive: true });
-  btn.addEventListener('touchcancel', end, { passive: true });
-  btn.addEventListener('mousedown', e => { e.stopPropagation(); keys[dir] = true; btn.classList.add('pressed'); });
-  btn.addEventListener('mouseup', e => { e.stopPropagation(); keys[dir] = false; btn.classList.remove('pressed'); });
-  btn.addEventListener('mouseleave', e => { keys[dir] = false; btn.classList.remove('pressed'); });
+// Touch controls — tap/hold left or right half of screen
+function bindZone(zone, dir) {
+  const press = e => {
+    if (gameState !== 'playing') return;
+    e.preventDefault();
+    keys[dir] = true;
+    zone.classList.add('active');
+  };
+  const release = e => {
+    e.preventDefault();
+    keys[dir] = false;
+    zone.classList.remove('active');
+  };
+  zone.addEventListener('pointerdown', press);
+  zone.addEventListener('pointerup', release);
+  zone.addEventListener('pointercancel', release);
+  zone.addEventListener('pointerleave', release);
 }
 
-addTouchEvents(btnLeft, 'left');
-addTouchEvents(btnRight, 'right');
+bindZone(zoneLeft, 'left');
+bindZone(zoneRight, 'right');
 
 // ─── GAME LOOP ──────────────────────────────────────────────────────────────
 function loop(now) {
@@ -670,7 +660,7 @@ function gameOver(won) {
   }
 
   // Hide touch controls
-  touchControls.classList.add('hidden');
+  touchZones.classList.add('hidden');
 
   if (won) {
     spawnConfetti();
